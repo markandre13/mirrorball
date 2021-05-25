@@ -155,34 +155,25 @@ function createScene(): Scene {
             continue
 
         for (let j = 0; j < 2 * Math.PI; j += 2 * Math.PI / tileCount1) {
-            let n0 = vec3.fromValues(0, 1, 0)
-            let p0 = vec3.fromValues(-tileSize, radius, -tileSize)
-            let p1 = vec3.fromValues(tileSize, radius, -tileSize)
-            let p2 = vec3.fromValues(tileSize, radius, tileSize)
-            let p3 = vec3.fromValues(-tileSize, radius, tileSize)
 
-            vec3.rotateX(n0, n0, origin, i)
-            vec3.rotateX(p0, p0, origin, i)
-            vec3.rotateX(p1, p1, origin, i)
-            vec3.rotateX(p2, p2, origin, i)
-            vec3.rotateX(p3, p3, origin, i)
-
-            vec3.rotateZ(n0, n0, origin, j)
-            vec3.rotateZ(p0, p0, origin, j)
-            vec3.rotateZ(p1, p1, origin, j)
-            vec3.rotateZ(p2, p2, origin, j)
-            vec3.rotateZ(p3, p3, origin, j)
-            
             const idx = scene.vertex.length / 3
-            scene.vertex.push(...p0)
-            scene.vertex.push(...p1)
-            scene.vertex.push(...p2)
-            scene.vertex.push(...p3)
-
             scene.indices.push(idx, idx+1, idx+2, idx, idx+2, idx+3)
 
-            for(let i=0; i<4; ++i)
-                scene.normals.push(...n0)
+            let v = [
+                vec3.fromValues(0, 1, 0),
+                vec3.fromValues(-tileSize, radius, -tileSize),
+                vec3.fromValues(tileSize, radius, -tileSize),
+                vec3.fromValues(tileSize, radius, tileSize),
+                vec3.fromValues(-tileSize, radius, tileSize),
+            ]
+            for(let a=0; a<v.length; ++a) {
+                vec3.rotateX(v[a], v[a], origin, i)
+                vec3.rotateZ(v[a], v[a], origin, j)
+            }
+            for(let a=0; a<4; ++a)
+                scene.normals.push(...v[0])         
+            for(let a=1; a<v.length; ++a)
+                scene.vertex.push(...v[a])
 
             scene.faceColors.push([Math.random(), Math.random(), Math.random(), 1.0])
         }
