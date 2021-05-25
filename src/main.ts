@@ -70,7 +70,7 @@ export function main() {
 
     let t0 = 0
     function render(t1: number) {
-        t1 *= 0.0001;  // convert to seconds
+        t1 *= 0.001;  // convert to seconds
         const deltaTime = t1 - t0
         t0 = t1
 
@@ -91,31 +91,26 @@ function createScene(): Scene {
 
     const radius = 1
     const circumference0 = radius * 2 * Math.PI
-    const tileSize = 0.08
-    const tileSpacing = 0.01
+    const tileSize = 1/64
+    const tileSpacing = tileSize / 15
     const tileCount0 = Math.floor(circumference0 / (2 * (tileSize + tileSpacing)))
     const origin = vec3.fromValues(0,0,0)
 
-    for (let i = 0; i < Math.PI / 2; i += 2 * Math.PI / tileCount0) {
+    for (let i = -Math.PI / 2; i < Math.PI / 2; i += 2 * Math.PI / tileCount0) {
 
         let q = vec3.fromValues(0, radius, 0)
         vec3.rotateX(q, q, origin, i)
         const circumference1 = q[1] * 2 * Math.PI
         const tileCount1 = Math.floor(circumference1 / (2 * (tileSize + tileSpacing)))
 
-        console.log(`${i}: ${q[0]}, ${q[1]}, ${q[2]}; ${tileCount1}`)
-
-        if (i > Math.PI && tileCount1 <= 0)
+        if (i > 0 && tileCount1 <= 0) {
+            console.log(`abort at i=${i}, tileCount1=${tileCount1}`)
             break
+        }
         if (tileCount1 < 0)
             continue
 
-        // continue
-
         for (let j = 0; j < 2 * Math.PI; j += 2 * Math.PI / tileCount1) {
-
-            console.log(`j=${j}, i=${i}, tileCount0=${tileCount0}, tileCount1=${tileCount1}`)
-
             let p0 = vec3.fromValues(-tileSize, radius, -tileSize)
             let p1 = vec3.fromValues(tileSize, radius, -tileSize)
             let p2 = vec3.fromValues(tileSize, radius, tileSize)
@@ -140,10 +135,8 @@ function createScene(): Scene {
             scene.indices.push(idx, idx+1, idx+2, idx, idx+2, idx+3)
 
             scene.faceColors.push([Math.random(), Math.random(), Math.random(), 1.0])
-            // break
         }
     }
-    console.log(`created ${scene.faceColors.length} tiles`)
     return scene
 }
 
@@ -265,7 +258,8 @@ function createAllBuffers(gl: WebGL2RenderingContext, scene: Scene): Buffers {
     var colors: number[] = []
     for (var j = 0; j < scene.faceColors.length; ++j) {
         const c = scene.faceColors[j]
-        colors = colors.concat(c, c, c, c)
+        for(let i=0; i<4; ++i)
+            colors.push(...c)
     }
 
     return {
