@@ -140,7 +140,8 @@ function createScene(): Scene {
     const tileCount0 = Math.floor(circumference0 / (2 * (tileSize + tileSpacing)))
     const origin = vec3.fromValues(0,0,0)
 
-    for (let i = -Math.PI / 2; i < Math.PI / 2; i += 2 * Math.PI / tileCount0) {
+    const step0 = 2 * Math.PI / tileCount0
+    for (let i = -Math.PI / 2; i < Math.PI / 2; i += step0) {
 
         let q = vec3.fromValues(0, radius, 0)
         vec3.rotateX(q, q, origin, i)
@@ -154,7 +155,8 @@ function createScene(): Scene {
         if (tileCount1 < 0)
             continue
 
-        for (let j = 0; j < 2 * Math.PI; j += 2 * Math.PI / tileCount1) {
+        const step1 = 2 * Math.PI / tileCount1
+        for (let j = 0; j < 2 * Math.PI - step1/2; j += step1) {
 
             const idx = scene.vertex.length / 3
             scene.indices.push(idx, idx+1, idx+2, idx, idx+2, idx+3)
@@ -166,6 +168,22 @@ function createScene(): Scene {
                 vec3.fromValues(tileSize, radius, tileSize),
                 vec3.fromValues(-tileSize, radius, tileSize),
             ]
+
+            const maxRandomDegree = 10
+            const rx = ( Math.random() - 0.5 ) * 2 * Math.PI / 360 * maxRandomDegree
+            const rz = ( Math.random() - 0.5 ) * 2 * Math.PI / 360 * maxRandomDegree
+
+            // rotate normal vector around origin
+            vec3.rotateX(v[0], v[0], origin, rx)
+            vec3.rotateZ(v[0], v[0], origin, rz)
+
+            // rotate tile around it's center
+            const cv = vec3.fromValues(0, radius, 0)
+            for(let a=1; a<v.length; ++a) {
+                vec3.rotateX(v[a], v[a], cv, rx)
+                vec3.rotateZ(v[a], v[a], cv, rz)
+            }
+
             for(let a=0; a<v.length; ++a) {
                 vec3.rotateX(v[a], v[a], origin, i)
                 vec3.rotateZ(v[a], v[a], origin, j)
