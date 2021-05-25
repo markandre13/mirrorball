@@ -5,7 +5,29 @@ import { vec3, mat4 } from 'gl-matrix'
 interface Scene {
     vertex: number[]
     indices: number[]
+    normals: number[]
     faceColors: number[][]
+}
+
+interface Buffers {
+    position: WebGLBuffer
+    normal: WebGLBuffer
+    color: WebGLBuffer
+    indices: WebGLBuffer
+}
+
+interface ProgramInfo {
+    program: WebGLProgram
+    attribLocations: {
+        vertexPosition: number
+        vertexNormal: number
+        vertexColor: number
+    }
+    uniformLocations: {
+        projectionMatrix: WebGLUniformLocation
+        modelViewMatrix: WebGLUniformLocation
+        normalMatrix: WebGLUniformLocation
+    }
 }
 
 export function main() {
@@ -33,11 +55,13 @@ export function main() {
 
     const vertextShaderProgram = `
     attribute vec4 aVertexPosition;
-    // attribute vec3 aVertexNormal;
+    attribute vec3 aVertexNormal;
     attribute vec4 aVertexColor;
 
     uniform mat4 uModelViewMatrix;
     uniform mat4 uProjectionMatrix;
+    uniform mat4 uNormalMatrix;
+
     varying lowp vec4 vColor;
     varying highp vec3 vLighting;
 
@@ -45,20 +69,24 @@ export function main() {
         gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
         vColor = aVertexColor;
 
-        // highp vec3 ambientLight = vec3(0.3, 0.3, 0.3);
-        // highp vec3 directionalLightColor = vec3(1, 1, 1);
-        // highp vec3 directionalVector = normalize(vec3(0.85, 0.8, 0.75));
-        // highp vec4 transformedNormal = uNormalMatrix * vec4(aVertexNormal, 1.0);
-        // highp float directional = max(dot(transformedNormal.xyz, directionalVector), 0.0);
-        // vLighting = ambientLight + (directionalLightColor * directional);
+        highp vec3 ambientLight = vec3(0.3, 0.3, 0.3);
+
+        highp vec3 directionalLightColor = vec3(1, 1, 1);
+        highp vec3 directionalVector = normalize(vec3(0.85, 0.8, 0.75));
+        highp vec4 transformedNormal = uNormalMatrix * vec4(aVertexNormal, 1.0);
+        highp float directional = max(dot(transformedNormal.xyz, directionalVector), 0.0);
+
+        vLighting = ambientLight + (directionalLightColor * directional);
     }`
 
     // Fragment shader program
 
     const fragmentShaderProgram = `
     varying lowp vec4 vColor;
+    varying highp vec3 vLighting;
     void main(void) {
-        gl_FragColor = vColor;
+        // gl_FragColor = vec4(vec3(1,0.8,0.7) * vLighting, 1.0);
+        gl_FragColor = vec4(vColor.xyz * vLighting, 1.0);
     }`
     const shaderProgram = compileShaders(gl, vertextShaderProgram, fragmentShaderProgram)
 
@@ -72,6 +100,7 @@ export function main() {
         uniformLocations: {
             projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix')!,
             modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix')!,
+            normalMatrix: gl.getUniformLocation(shaderProgram, 'uNormalMatrix')!
         }
     }
 
@@ -95,6 +124,7 @@ export function main() {
 function createScene(): Scene {
     const scene: Scene = {
         vertex: [],
+        normals: [],
         indices: [],
         faceColors: []
     }
@@ -121,16 +151,19 @@ function createScene(): Scene {
             continue
 
         for (let j = 0; j < 2 * Math.PI; j += 2 * Math.PI / tileCount1) {
+            let n0 = vec3.fromValues(0, 1, 0)
             let p0 = vec3.fromValues(-tileSize, radius, -tileSize)
             let p1 = vec3.fromValues(tileSize, radius, -tileSize)
             let p2 = vec3.fromValues(tileSize, radius, tileSize)
             let p3 = vec3.fromValues(-tileSize, radius, tileSize)
 
+            vec3.rotateX(n0, n0, origin, i)
             vec3.rotateX(p0, p0, origin, i)
             vec3.rotateX(p1, p1, origin, i)
             vec3.rotateX(p2, p2, origin, i)
             vec3.rotateX(p3, p3, origin, i)
 
+            vec3.rotateZ(n0, n0, origin, j)
             vec3.rotateZ(p0, p0, origin, j)
             vec3.rotateZ(p1, p1, origin, j)
             vec3.rotateZ(p2, p2, origin, j)
@@ -144,29 +177,13 @@ function createScene(): Scene {
 
             scene.indices.push(idx, idx+1, idx+2, idx, idx+2, idx+3)
 
+            for(let i=0; i<4; ++i)
+                scene.normals.push(...n0)
+
             scene.faceColors.push([Math.random(), Math.random(), Math.random(), 1.0])
         }
     }
     return scene
-}
-
-interface ProgramInfo {
-    program: WebGLProgram
-    attribLocations: {
-        vertexPosition: number
-        vertexNormal: number
-        vertexColor: number
-    }
-    uniformLocations: {
-        projectionMatrix: WebGLUniformLocation
-        modelViewMatrix: WebGLUniformLocation
-    }
-}
-
-interface Buffers {
-    position: WebGLBuffer
-    color: WebGLBuffer
-    indices: WebGLBuffer
 }
 
 function drawScene(gl: WebGL2RenderingContext, programInfo: ProgramInfo, buffers: Buffers, scene: Scene) {
@@ -196,6 +213,10 @@ function drawScene(gl: WebGL2RenderingContext, programInfo: ProgramInfo, buffers
     mat4.rotate(modelViewMatrix, modelViewMatrix, cubeRotation, [0, 0, 1])  
     mat4.rotate(modelViewMatrix, modelViewMatrix, cubeRotation * .7, [0, 1, 0]) 
 
+    const normalMatrix = mat4.create();
+    mat4.invert(normalMatrix, modelViewMatrix);
+    mat4.transpose(normalMatrix, normalMatrix);
+
     {
         const numComponents = 3
         const type = gl.FLOAT
@@ -210,8 +231,25 @@ function drawScene(gl: WebGL2RenderingContext, programInfo: ProgramInfo, buffers
             normalize,
             stride,
             offset)
+        gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition)
+    }
+
+    {
+        const numComponents = 3
+        const type = gl.FLOAT
+        const normalize = false
+        const stride = 0
+        const offset = 0
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.normal)
+        gl.vertexAttribPointer(
+            programInfo.attribLocations.vertexNormal,
+            numComponents,
+            type,
+            normalize,
+            stride,
+            offset);
         gl.enableVertexAttribArray(
-            programInfo.attribLocations.vertexPosition)
+            programInfo.attribLocations.vertexNormal)
     }
 
     {
@@ -237,6 +275,7 @@ function drawScene(gl: WebGL2RenderingContext, programInfo: ProgramInfo, buffers
 
     gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix)
     gl.uniformMatrix4fv(programInfo.uniformLocations.modelViewMatrix, false, modelViewMatrix)
+    gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix)
 
     {       
         const vertexCount = scene.indices.length
@@ -288,6 +327,7 @@ function createAllBuffers(gl: WebGL2RenderingContext, scene: Scene): Buffers {
 
     return {
         position: createBuffer(gl, gl.ARRAY_BUFFER, gl.STATIC_DRAW, Float32Array, scene.vertex),
+        normal: createBuffer(gl, gl.ARRAY_BUFFER, gl.STATIC_DRAW, Float32Array, scene.normals),
         color: createBuffer(gl, gl.ARRAY_BUFFER, gl.STATIC_DRAW, Float32Array, colors),
         indices: createBuffer(gl, gl.ELEMENT_ARRAY_BUFFER, gl.STATIC_DRAW, Uint16Array, scene.indices),
     }
