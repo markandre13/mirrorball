@@ -86,7 +86,9 @@ function createScene(): Scene {
     const tileSpacing = tileSize / 15
     const tileCount0 = Math.floor(circumference0 / (2 * (tileSize + tileSpacing)))
     const origin = vec3.fromValues(0,0,0)
+    let shiftRing = 0
 
+    // create rings for mirror tiles from bottom to top
     const step0 = 2 * Math.PI / tileCount0
     for (let i = -Math.PI / 2; i < Math.PI / 2; i += step0) {
 
@@ -99,10 +101,13 @@ function createScene(): Scene {
             console.log(`abort at i=${i}, tileCount1=${tileCount1}`)
             break
         }
-        if (tileCount1 < 0)
+        if (tileCount1 <= 0)
             continue
 
+        // create tiles for ring
         const step1 = 2 * Math.PI / tileCount1
+        shiftRing += step1 / 2.0
+        console.log(`skew=${shiftRing}, step1=${step1}, titleCount1=${tileCount1}`)
         for (let j = 0; j < 2 * Math.PI - step1/2; j += step1) {
 
             const idx = scene.vertex.length / 3
@@ -133,7 +138,7 @@ function createScene(): Scene {
 
             for(let a=0; a<v.length; ++a) {
                 vec3.rotateX(v[a], v[a], origin, i)
-                vec3.rotateZ(v[a], v[a], origin, j)
+                vec3.rotateZ(v[a], v[a], origin, j + shiftRing)
             }
             for(let a=0; a<4; ++a)
                 scene.normals.push(...v[0])         
