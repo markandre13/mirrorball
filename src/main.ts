@@ -1,6 +1,6 @@
 var cubeRotation = 0.0
 
-import { mat4 } from 'gl-matrix'
+import { vec3, mat4 } from 'gl-matrix'
 
 interface Scene {
     vertex: number[]
@@ -70,11 +70,12 @@ export function main() {
 
     let t0 = 0
     function render(t1: number) {
-        t1 *= 0.001;  // convert to seconds
+        t1 *= 0.0001;  // convert to seconds
         const deltaTime = t1 - t0
         t0 = t1
 
         drawScene(gl, programInfo, buffers, deltaTime, scene)
+        cubeRotation += deltaTime
 
         requestAnimationFrame(render)
     }
@@ -82,61 +83,39 @@ export function main() {
 }
 
 function createScene(): Scene {
-    return {
-        vertex: [
-            // Front face
-            -1.0, -1.0, 1.0,
-            1.0, -1.0, 1.0,
-            1.0, 1.0, 1.0,
-            -1.0, 1.0, 1.0,
-    
-            // Back face
-            -1.0, -1.0, -1.0,
-            -1.0, 1.0, -1.0,
-            1.0, 1.0, -1.0,
-            1.0, -1.0, -1.0,
-    
-            // Top face
-            -1.0, 1.0, -1.0,
-            -1.0, 1.0, 1.0,
-            1.0, 1.0, 1.0,
-            1.0, 1.0, -1.0,
-    
-            // Bottom face
-            -1.0, -1.0, -1.0,
-            1.0, -1.0, -1.0,
-            1.0, -1.0, 1.0,
-            -1.0, -1.0, 1.0,
-    
-            // Right face
-            1.0, -1.0, -1.0,
-            1.0, 1.0, -1.0,
-            1.0, 1.0, 1.0,
-            1.0, -1.0, 1.0,
-    
-            // Left face
-            -1.0, -1.0, -1.0,
-            -1.0, -1.0, 1.0,
-            -1.0, 1.0, 1.0,
-            -1.0, 1.0, -1.0,
-        ],
-        indices: [
-            0, 1, 2, 0, 2, 3,    // front
-            4, 5, 6, 4, 6, 7,    // back
-            8, 9, 10, 8, 10, 11,   // top
-            12, 13, 14, 12, 14, 15,   // bottom
-            16, 17, 18, 16, 18, 19,   // right
-            20, 21, 22, 20, 22, 23,   // left
-        ],
-        faceColors: [
-            [1.0, 1.0, 1.0, 1.0],    // Front face: white
-            [1.0, 0.0, 0.0, 1.0],    // Back face: red
-            [0.0, 1.0, 0.0, 1.0],    // Top face: green
-            [0.0, 0.0, 1.0, 1.0],    // Bottom face: blue
-            [1.0, 1.0, 0.0, 1.0],    // Right face: yellow
-            [1.0, 0.0, 1.0, 1.0],    // Left face: purple
-        ]
+    const scene: Scene = {
+        vertex: [],
+        indices: [],
+        faceColors: []
     }
+
+    const radius = 1
+    const tileSize = 0.08
+
+    for (let i = 0; i < 2 * Math.PI; i += 2 * Math.PI / 32) {
+
+        let origin = vec3.fromValues(0,0,0)
+        let p0 = vec3.fromValues(-tileSize, radius, -tileSize)
+        let p1 = vec3.fromValues(tileSize, radius, -tileSize)
+        let p2 = vec3.fromValues(tileSize, radius, tileSize)
+        let p3 = vec3.fromValues(-tileSize, radius, tileSize)
+
+        vec3.rotateZ(p0, p0, origin, i)
+        vec3.rotateZ(p1, p1, origin, i)
+        vec3.rotateZ(p2, p2, origin, i)
+        vec3.rotateZ(p3, p3, origin, i)
+        
+        const idx = scene.vertex.length / 3
+        scene.vertex.push(...p0)
+        scene.vertex.push(...p1)
+        scene.vertex.push(...p2)
+        scene.vertex.push(...p3)
+
+        scene.indices.push(idx, idx+1, idx+2, idx, idx+2, idx+3)
+
+        scene.faceColors.push([Math.random(), Math.random(), Math.random(), 1.0])
+    }
+    return scene
 }
 
 function drawScene(gl: WebGL2RenderingContext, programInfo: any, buffers: any, deltaTime: number, scene: Scene) {
@@ -214,8 +193,6 @@ function drawScene(gl: WebGL2RenderingContext, programInfo: any, buffers: any, d
         const offset = 0
         gl.drawElements(gl.TRIANGLES, vertexCount, type, offset)
     }
-
-    cubeRotation += deltaTime
 }
 
 function compileShaders(gl: any, vertexSharderSrc: string, fragmentShaderSrc: string) {
