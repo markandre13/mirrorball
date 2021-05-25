@@ -1,5 +1,3 @@
-var cubeRotation = 0.0
-
 import { vec3, mat4 } from 'gl-matrix'
 
 interface Scene {
@@ -60,13 +58,14 @@ export function main() {
     const programInfo = linkProgram(gl, vertexShader, fragmentShader)
 
     let t0 = 0
+    var rotation = 0.0
     function render(t1: number) {
         t1 *= 0.00025
         const deltaTime = t1 - t0
         t0 = t1
 
-        drawScene(gl, programInfo, buffers, scene)
-        cubeRotation += deltaTime
+        drawScene(gl, programInfo, buffers, scene, rotation)
+        rotation += deltaTime
 
         requestAnimationFrame(render)
     }
@@ -251,7 +250,7 @@ function linkProgram(gl: WebGL2RenderingContext, vertexShader: WebGLShader, frag
     }
 }
 
-function drawScene(gl: WebGL2RenderingContext, programInfo: ProgramInfo, buffers: Buffers, scene: Scene) {
+function drawScene(gl: WebGL2RenderingContext, programInfo: ProgramInfo, buffers: Buffers, scene: Scene, rotation: number) {
     const canvas = gl.canvas as HTMLCanvasElement
     if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
         canvas.width = canvas.clientWidth
@@ -276,7 +275,7 @@ function drawScene(gl: WebGL2RenderingContext, programInfo: ProgramInfo, buffers
     const modelViewMatrix = mat4.create()
     mat4.translate(modelViewMatrix, modelViewMatrix, [-0.0, 0.0, -3.0])
     mat4.rotate(modelViewMatrix, modelViewMatrix, Math.PI/2, [1, 0, 0]) 
-    mat4.rotate(modelViewMatrix, modelViewMatrix, cubeRotation, [0, 0, 1])  
+    mat4.rotate(modelViewMatrix, modelViewMatrix, rotation, [0, 0, 1])  
 
     const normalMatrix = mat4.create();
     mat4.invert(normalMatrix, modelViewMatrix);
