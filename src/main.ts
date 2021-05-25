@@ -34,16 +34,25 @@ export function main() {
     glframe.style.left = "0"
     glframe.style.right = "0"
     glframe.style.top = "0"
-    glframe.style.bottom = "0"
+    glframe.style.bottom = "24px"
     glframe.style.overflow = "hidden"
 
     const canvas = document.createElement("canvas")
-    canvas.style.width = "100vw"
-    canvas.style.height = "100vh"
+    glframe.style.position = "absolute"
+    canvas.style.width = "100%"
+    canvas.style.height = "100%"
     canvas.style.display = "block"
+
+    const text = document.createElement("div")
+    text.style.position = "absolute"
+    text.style.left = "0"
+    text.style.right = "0"
+    text.style.height = "24px"
+    text.style.bottom = "0"
 
     glframe.appendChild(canvas)
     document.body.appendChild(glframe)
+    document.body.appendChild(text)
 
     const gl = (canvas.getContext('webgl2') || canvas.getContext('experimental-webgl')) as WebGL2RenderingContext
     if (gl === null) {
@@ -52,6 +61,21 @@ export function main() {
     }
 
     const scene = createScene()
+
+    let obj = "# Wavefront Object File"
+    for(let i=0; i < scene.vertex.length; i += 3) {
+        obj=`${obj}\nv ${scene.vertex[i]} ${scene.vertex[i+1]} ${scene.vertex[i+2]}`
+    }
+    for(let i=0; i < scene.indices.length; i += 3) {
+        obj=`${obj}\nf ${scene.indices[i]+1} ${scene.indices[i+1]+1} ${scene.indices[i+2]+1}`
+    }
+    const download = document.createElement("a")
+    download.download = "mirrorball.obj"
+    download.type = "model/obj"
+    download.href = URL.createObjectURL(new Blob([obj]));
+    download.appendChild(document.createTextNode("Wavefront Object File"))
+    text.appendChild(download)
+
     const buffers = createAllBuffers(gl, scene)
     const vertexShader = compileShader(gl, gl.VERTEX_SHADER, vertextShaderProgram)
     const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, fragmentShaderProgram)
@@ -107,7 +131,7 @@ function createScene(): Scene {
         // create tiles for ring
         const step1 = 2 * Math.PI / tileCount1
         shiftRing += step1 / 2.0
-        console.log(`skew=${shiftRing}, step1=${step1}, titleCount1=${tileCount1}`)
+        // console.log(`skew=${shiftRing}, step1=${step1}, titleCount1=${tileCount1}`)
         for (let j = 0; j < 2 * Math.PI - step1/2; j += step1) {
 
             const idx = scene.vertex.length / 3
