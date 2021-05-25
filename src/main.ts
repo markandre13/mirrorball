@@ -69,14 +69,18 @@ export function main() {
         gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
         vColor = aVertexColor;
 
-        highp vec3 ambientLight = vec3(0.3, 0.3, 0.3);
-
-        highp vec3 directionalLightColor = vec3(1, 1, 1);
-        highp vec3 directionalVector = normalize(vec3(0.85, 0.8, 0.75));
         highp vec4 transformedNormal = uNormalMatrix * vec4(aVertexNormal, 1.0);
-        highp float directional = max(dot(transformedNormal.xyz, directionalVector), 0.0);
+        highp vec3 ambientLight = vec3(0.1, 0.1, 0.1);
 
-        vLighting = ambientLight + (directionalLightColor * directional);
+        highp vec3 directionalLightColor1 = vec3(1, 0, 0);
+        highp vec3 directionalVector1 = normalize(vec3(0.85, 0.8, 0.75));
+        highp float directional1 = max(dot(transformedNormal.xyz, directionalVector1), 0.0);
+
+        highp vec3 directionalLightColor2 = vec3(0, 0, 1);
+        highp vec3 directionalVector2 = normalize(vec3(-0.85, 0.8, 0.75));
+        highp float directional2 = max(dot(transformedNormal.xyz, directionalVector2), 0.0);
+
+        vLighting = ambientLight + (directionalLightColor1 * directional1) + (directionalLightColor2 * directional2) ;
     }`
 
     // Fragment shader program
@@ -85,8 +89,8 @@ export function main() {
     varying lowp vec4 vColor;
     varying highp vec3 vLighting;
     void main(void) {
-        // gl_FragColor = vec4(vec3(1,0.8,0.7) * vLighting, 1.0);
-        gl_FragColor = vec4(vColor.xyz * vLighting, 1.0);
+        gl_FragColor = vec4(vec3(1,1,1) * vLighting, 1.0);
+        // gl_FragColor = vec4(vColor.xyz * vLighting, 1.0);
     }`
     const shaderProgram = compileShaders(gl, vertextShaderProgram, fragmentShaderProgram)
 
